@@ -13,60 +13,69 @@ class ExplorerWin: public Window
 {
 public:
     unsigned selected_line_indx = 0, max_line_cnt = 0;
+    std::vector<VCDScope*> scopes;
+    std::vector<bool> scope_is_expanded;
 
     ExplorerWin(int height, int width, int y, int x): Window(height, width, y, x, "Explorer")
-    {}
-
-    void populate()
     {
-        std::vector<VCDScope*> scopes = *global_trace->get_scopes();
+        scopes = *global_trace->get_scopes();
+        
+        // all scopes are not expanded initially
+        for (auto s:scopes)
+            scope_is_expanded.push_back(false);
+    }
 
-        unsigned line_no = 0;
+    void print()
+    {
+        unsigned voffset = 1;
+        unsigned line = 0;
         for(unsigned scope_indx=0; scope_indx < scopes.size(); scope_indx++)
-        {                      
+        {
             // print scope name
-            move(line_no++, 1);
+            move(line+voffset, 1);
             
-            wattron(win, A_BOLD);
-            if (selected_line_indx == line_no) 
+            if (selected_line_indx == line) 
                 wattron(win, COLOR_PAIR(1));
             
-            wprintw(win, " %s", scopes[scope_indx]->name.c_str());
-            
+            wattron(win, A_BOLD);
+            wprintw(win, " %s", (scope_indx==0 ? "*" :scopes[scope_indx]->name.c_str()));
             wattroff(win, A_BOLD);
-            if (selected_line_indx == line_no)
+
+            if (selected_line_indx == line)
                 wattroff(win, COLOR_PAIR(1));
 
+            line++;
             auto signals = scopes[scope_indx]->signals;
 
             for(int sig_indx=0; sig_indx < signals.size(); sig_indx++)
             {
-                move(line_no++, 1);
-                if (selected_line_indx == line_no)
+                move(line+voffset, 1);
+                if (selected_line_indx == line)
                     wattron(win, COLOR_PAIR(1));
                 
                 wprintw(win, "  %s [%d:0]", signals[sig_indx]->reference.c_str(), signals[sig_indx]->size);
                 
-                if (selected_line_indx == line_no)
+                if (selected_line_indx == line)
                     wattroff(win, COLOR_PAIR(1));
+                
+                line++;
             }
-
         }
 
         // save last line no
-        max_line_cnt = line_no;
+        max_line_cnt = line;
     }
 
     void keypress(char key)
     {
         if (key == 'w')
         {
-            if (selected_line_indx > 2)
+            if (selected_line_indx > 0)
                 selected_line_indx--;
         }
         else if (key == 's')
         {
-            if (selected_line_indx < max_line_cnt)
+            if (selected_line_indx < max_line_cnt-1)
                 selected_line_indx++;
         }
     }
@@ -78,7 +87,7 @@ public:
     SignalsWin(int height, int width, int y, int x): Window(height, width, y, x, "Signals")
     {}
 
-    void populate() {}
+    void print() {}
 
     void keypress(char key)
     {}
@@ -90,7 +99,7 @@ public:
     MonitorWin(int height, int width, int y, int x): Window(height, width, y, x, "Monitor")
     {}
 
-    void populate() {}
+    void print() {}
 
     void keypress(char key)
     {}
@@ -124,8 +133,11 @@ int main(int argc, char** argv)
     VCDFileParser parser;
     global_trace = parser.parse_file(filepath);
 
+
     if(trace == nullptr)
         return -1;
+      
+
 
 
     initscr();                  // initialize ncurses mode
@@ -164,6 +176,7 @@ int main(int argc, char** argv)
     std::vector<Window *> avail_windows = {&win_explorer, &win_signals, &win_monitor};
     int selected_win_indx = 0;
 
+    
     while (1)
     {
         Window * selected_win = avail_windows[selected_win_indx];
@@ -174,7 +187,7 @@ int main(int argc, char** argv)
 
         // populate wins
         for(auto itr: avail_windows)
-            itr->populate();
+            itr->print();
 
 
         // read input

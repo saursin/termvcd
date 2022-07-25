@@ -49,6 +49,6 @@ public:
 
     virtual void keypress(char key) = 0;
     
-    virtual void populate() = 0;
+    virtual void print() = 0;
 };
 
