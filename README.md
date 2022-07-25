@@ -1,6 +1,7 @@
 # termvcd
 A terminal based vcd viewer
 
+![](demo.png)
 
 ## Controls
 ```
