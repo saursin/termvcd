@@ -168,6 +168,10 @@ int main(int argc, char** argv)
     std::string header = "*****   Terminal VCD viewer   *****";
     wmove(stdscr, 0, (stdscr_width/2) -(header.length()/2));    // center align
     wprintw(stdscr, "%s", header.c_str());
+
+    // print footer
+    wmove(stdscr, stdscr_height-1, 1);    // center align
+    wprintw(stdscr, "q: quit\tw/a/s/d: move selection\te:expand/collapse");
     
     // Print filename
     wmove(stdscr, 1, 1);
