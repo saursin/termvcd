@@ -12,6 +12,8 @@ VCDFile * global_trace = nullptr;
 class ExplorerWin: public Window
 {
 public:
+    unsigned selected_line_indx = 0, max_line_cnt = 0;
+
     ExplorerWin(int height, int width, int y, int x): Window(height, width, y, x, "Explorer")
     {}
 
@@ -19,27 +21,55 @@ public:
     {
         std::vector<VCDScope*> scopes = *global_trace->get_scopes();
 
-        unsigned line_no=0;
+        unsigned line_no = 0;
         for(unsigned scope_indx=0; scope_indx < scopes.size(); scope_indx++)
-        {
+        {                      
             // print scope name
             move(line_no++, 1);
+            
             wattron(win, A_BOLD);
+            if (selected_line_indx == line_no) 
+                wattron(win, COLOR_PAIR(1));
+            
             wprintw(win, " %s", scopes[scope_indx]->name.c_str());
+            
             wattroff(win, A_BOLD);
+            if (selected_line_indx == line_no)
+                wattroff(win, COLOR_PAIR(1));
 
             auto signals = scopes[scope_indx]->signals;
 
             for(int sig_indx=0; sig_indx < signals.size(); sig_indx++)
             {
                 move(line_no++, 1);
+                if (selected_line_indx == line_no)
+                    wattron(win, COLOR_PAIR(1));
+                
                 wprintw(win, "  %s [%d:0]", signals[sig_indx]->reference.c_str(), signals[sig_indx]->size);
+                
+                if (selected_line_indx == line_no)
+                    wattroff(win, COLOR_PAIR(1));
             }
+
         }
+
+        // save last line no
+        max_line_cnt = line_no;
     }
 
     void keypress(char key)
-    {}
+    {
+        if (key == 'w')
+        {
+            if (selected_line_indx > 2)
+                selected_line_indx--;
+        }
+        else if (key == 's')
+        {
+            if (selected_line_indx < max_line_cnt)
+                selected_line_indx++;
+        }
+    }
 };
 
 class SignalsWin: public Window
