@@ -2,3 +2,4 @@
 verilog-vcd-parser/
 lib/
 termvcd
+.vscode/

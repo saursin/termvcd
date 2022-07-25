@@ -47,18 +47,21 @@ public:
             line++;
             auto signals = scopes[scope_indx]->signals;
 
-            for(int sig_indx=0; sig_indx < signals.size(); sig_indx++)
+            if(scope_is_expanded[scope_indx])
             {
-                move(line+voffset, 1);
-                if (selected_line_indx == line)
-                    wattron(win, COLOR_PAIR(1));
-                
-                wprintw(win, "  %s [%d:0]", signals[sig_indx]->reference.c_str(), signals[sig_indx]->size);
-                
-                if (selected_line_indx == line)
-                    wattroff(win, COLOR_PAIR(1));
-                
-                line++;
+                for(int sig_indx=0; sig_indx < signals.size(); sig_indx++)
+                {
+                    move(line+voffset, 1);
+                    if (selected_line_indx == line)
+                        wattron(win, COLOR_PAIR(1));
+                    
+                    wprintw(win, "  %s [%d:0]", signals[sig_indx]->reference.c_str(), signals[sig_indx]->size);
+                    
+                    if (selected_line_indx == line)
+                        wattroff(win, COLOR_PAIR(1));
+                    
+                    line++;
+                }
             }
         }
 
@@ -78,6 +81,13 @@ public:
             if (selected_line_indx < max_line_cnt-1)
                 selected_line_indx++;
         }
+        else if (key == 'e')
+        {
+            scope_is_expanded[selected_line_indx] = !scope_is_expanded[selected_line_indx];
+        }
+
+        // redraw
+        print();
     }
 };
 
@@ -133,13 +143,10 @@ int main(int argc, char** argv)
     VCDFileParser parser;
     global_trace = parser.parse_file(filepath);
 
-
     if(trace == nullptr)
         return -1;
-      
 
-
-
+    // initialize program
     initscr();                  // initialize ncurses mode
     cbreak();                   // disable getch() buffering
     noecho();                   // disable getch() echo
@@ -153,6 +160,7 @@ int main(int argc, char** argv)
     }
     start_color();
 
+    // get stdscr dimensions
     int stdscr_height, stdscr_width;
     getmaxyx(stdscr, stdscr_height, stdscr_width);
 
@@ -160,62 +168,61 @@ int main(int argc, char** argv)
     std::string header = "*****   Terminal VCD viewer   *****";
     wmove(stdscr, 0, (stdscr_width/2) -(header.length()/2));    // center align
     wprintw(stdscr, "%s", header.c_str());
-
+    
     // Print filename
     wmove(stdscr, 1, 1);
     wprintw(stdscr, "File: %s", filepath.c_str());
 
-
     // Windows
-
     ExplorerWin win_explorer(stdscr_height-4, stdscr_width / 8, 3, 1);
     SignalsWin win_signals(stdscr_height-4, stdscr_width / 8, 3, win_explorer.width+1);
     MonitorWin win_monitor(stdscr_height-4, stdscr_width *(6 / 8), 3, win_explorer.width + win_signals.width+1);
     
-    
+    // win list
     std::vector<Window *> avail_windows = {&win_explorer, &win_signals, &win_monitor};
-    int selected_win_indx = 0;
+    auto selected_win = avail_windows.begin();
+    (*selected_win)->is_selected = true;
 
-    
+    wrefresh(stdscr);
+    for(auto itr: avail_windows)
+        itr->refresh();
+
     while (1)
     {
-        Window * selected_win = avail_windows[selected_win_indx];
-
-        // print headers of all windows (bold if selected)
-        for(auto itr: avail_windows)
-            itr->_printheader(selected_win==itr);
-
-        // populate wins
-        for(auto itr: avail_windows)
-            itr->print();
-
-
         // read input
         char inchar = getch();
+
         if(inchar == 'q')
         {
             break;
         }
         else if(inchar == 'd')  // select right window
         {
-            if(selected_win_indx < avail_windows.size()-1)
-                selected_win_indx++;
+            if (selected_win != avail_windows.end()-1)
+            {
+                (*selected_win)->is_selected = false;
+                (*selected_win)->refresh();
+                selected_win++;
+                (*selected_win)->is_selected = true;
+                (*selected_win)->refresh();
+            }
         }
         else if(inchar == 'a')  // select left window
         {
-            if(selected_win_indx > 0)
-                selected_win_indx--;
+            if (selected_win != avail_windows.begin())
+            {
+                (*selected_win)->is_selected = false;
+                (*selected_win)->refresh();
+                selected_win--;
+                (*selected_win)->is_selected = true;
+                (*selected_win)->refresh();
+            }
         }
-        else 
+        else if(inchar == 'w' || inchar == 's' || inchar == 'e')
         {
-            selected_win->keypress(inchar);
+            (*selected_win)->keypress(inchar);
+            (*selected_win)->refresh();
         }
-        
-       
-        wrefresh(stdscr);
-        win_explorer.refresh();
-        win_signals.refresh();
-        win_monitor.refresh();
     }
 
     endwin();
