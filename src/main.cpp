@@ -7,6 +7,8 @@
 #include "../lib/vcd_parser/VCDFile.hpp"
 #include "../lib/vcd_parser/VCDTypes.hpp"
 
+#define KEY_BKSPC 127
+
 // Global var
 VCDFile * global_trace = nullptr;
 
@@ -166,6 +168,16 @@ public:
             if (selected_line_indx < max_line_cnt-1)
                 selected_line_indx++;
         }
+        else if(key == KEY_BKSPC)
+        {
+            if(signals_.size() == 0)
+                return;
+            
+            auto it = signals_.begin() + selected_line_indx;
+            if (selected_line_indx == signals_.size()-1)
+                selected_line_indx > 0 ? selected_line_indx--: 0;
+            signals_.erase(it);
+        }
         
         // redraw
         print();
@@ -240,7 +252,7 @@ int main(int argc, char** argv)
 
     // print footer
     wmove(stdscr, stdscr_height-1, 1);    // center align
-    wprintw(stdscr, "q: quit\tw/a/s/d: move selection\te:expand/collapse\tenter:add signal\tdel:remove signal");
+    wprintw(stdscr, "q: quit\tw/a/s/d: move selection\te:expand/collapse\tenter:add signal\tbkspc:remove signal");
     
     // Print filename
     wmove(stdscr, 1, 1);
@@ -291,7 +303,7 @@ int main(int argc, char** argv)
                 (*selected_win)->refresh();
             }
         }
-        else if(inchar == 'w' || inchar == 's' || inchar == 'e')
+        else if(inchar == 'w' || inchar == 's' || inchar == 'e' || inchar == KEY_BKSPC)
         {
             (*selected_win)->keypress(inchar);
             (*selected_win)->refresh();
