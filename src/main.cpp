@@ -120,6 +120,8 @@ public:
 class SignalsWin: public Window
 {
 public:
+    unsigned selected_line_indx = 0; 
+    unsigned max_line_cnt;
     std::vector<VCDSignal*> signals_;
     SignalsWin(int height, int width, int y, int x): Window(height, width, y, x, "Signals")
     {}
@@ -138,13 +140,36 @@ public:
         for(unsigned sig_indx=0; sig_indx<signals_.size(); sig_indx++)
         {
             move(line+voffset, 1);
+
+            if(selected_line_indx == sig_indx)
+                wattron(win, COLOR_PAIR(1));
+
             wprintw(win, " %s [%d:0]", signals_[sig_indx]->reference.c_str(), signals_[sig_indx]->size);
+            
+            if(selected_line_indx == sig_indx)
+                wattroff(win, COLOR_PAIR(1));
+            
             line++;
         }
+        max_line_cnt = line;
     }
 
     virtual void keypress(char key)
-    {}
+    {
+        if (key == 'w')
+        {
+            if (selected_line_indx > 0)
+                selected_line_indx--;
+        }
+        else if (key == 's')
+        {
+            if (selected_line_indx < max_line_cnt-1)
+                selected_line_indx++;
+        }
+        
+        // redraw
+        print();
+    }
 };
 
 class MonitorWin: public Window
