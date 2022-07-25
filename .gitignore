@@ -1,0 +1,3 @@
+*.o
+verilog-vcd-parser/
+lib/
