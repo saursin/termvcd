@@ -1,5 +1,6 @@
 #include <ncurses.h>
 #include <vector>
+#include <algorithm>
 #include "window.hpp"
 
 #include "../lib/vcd_parser/VCDFileParser.hpp"
@@ -9,12 +10,20 @@
 // Global var
 VCDFile * global_trace = nullptr;
 
+struct ExplorerWinObj
+{
+    void * obj = nullptr;
+    bool is_signal = false;
+};
+
 class ExplorerWin: public Window
 {
 public:
     unsigned selected_line_indx = 0, max_line_cnt = 0;
     std::vector<VCDScope*> scopes;
     std::vector<bool> scope_is_expanded;
+    
+    ExplorerWinObj selected_obj;
 
     ExplorerWin(int height, int width, int y, int x): Window(height, width, y, x, "Explorer")
     {
@@ -25,7 +34,7 @@ public:
             scope_is_expanded.push_back(false);
     }
 
-    void print()
+    virtual void print()
     {
         unsigned voffset = 1;
         unsigned line = 0;
@@ -34,8 +43,13 @@ public:
             // print scope name
             move(line+voffset, 1);
             
-            if (selected_line_indx == line) 
+            if (selected_line_indx == line)
+            {
+                // update selection
+                selected_obj.obj = (void*) scopes[scope_indx];
+                selected_obj.is_signal = false;
                 wattron(win, COLOR_PAIR(1));
+            }
             
             wattron(win, A_BOLD);
             wprintw(win, " %s", (scope_indx==0 ? "*" :scopes[scope_indx]->name.c_str()));
@@ -53,7 +67,12 @@ public:
                 {
                     move(line+voffset, 1);
                     if (selected_line_indx == line)
+                    {
+                        // update selection
+                        selected_obj.obj = (void*) signals[sig_indx];
+                        selected_obj.is_signal = true;
                         wattron(win, COLOR_PAIR(1));
+                    }
                     
                     wprintw(win, "  %s [%d:0]", signals[sig_indx]->reference.c_str(), signals[sig_indx]->size);
                     
@@ -69,7 +88,14 @@ public:
         max_line_cnt = line;
     }
 
-    void keypress(char key)
+    VCDSignal* get_selected_signal()
+    {
+        if(!selected_obj.is_signal)
+            return nullptr;
+        return (VCDSignal*) selected_obj.obj;
+    }
+
+    virtual void keypress(char key)
     {
         if (key == 'w')
         {
@@ -94,12 +120,30 @@ public:
 class SignalsWin: public Window
 {
 public:
+    std::vector<VCDSignal*> signals_;
     SignalsWin(int height, int width, int y, int x): Window(height, width, y, x, "Signals")
     {}
 
-    void print() {}
+    void add_signal(VCDSignal * sig)
+    {
+        if(sig == nullptr)
+            return;
+        signals_.push_back(sig);
+    }
 
-    void keypress(char key)
+    virtual void print() 
+    {
+        unsigned line = 0;
+        unsigned voffset = 1;
+        for(unsigned sig_indx=0; sig_indx<signals_.size(); sig_indx++)
+        {
+            move(line+voffset, 1);
+            wprintw(win, " %s [%d:0]", signals_[sig_indx]->reference.c_str(), signals_[sig_indx]->size);
+            line++;
+        }
+    }
+
+    virtual void keypress(char key)
     {}
 };
 
@@ -109,9 +153,9 @@ public:
     MonitorWin(int height, int width, int y, int x): Window(height, width, y, x, "Monitor")
     {}
 
-    void print() {}
+    virtual void print() {}
 
-    void keypress(char key)
+    virtual void keypress(char key)
     {}
 };
 
@@ -171,7 +215,7 @@ int main(int argc, char** argv)
 
     // print footer
     wmove(stdscr, stdscr_height-1, 1);    // center align
-    wprintw(stdscr, "q: quit\tw/a/s/d: move selection\te:expand/collapse");
+    wprintw(stdscr, "q: quit\tw/a/s/d: move selection\te:expand/collapse\tenter:add signal\tdel:remove signal");
     
     // Print filename
     wmove(stdscr, 1, 1);
@@ -226,6 +270,20 @@ int main(int argc, char** argv)
         {
             (*selected_win)->keypress(inchar);
             (*selected_win)->refresh();
+        }
+        else if(inchar == '\n')
+        {
+            if( (*selected_win) == &win_explorer)
+            {
+                auto selected_sig = win_explorer.get_selected_signal();
+                
+                // wmove(win_monitor.win, 20, 2);
+                // wprintw(win_monitor.win, "%s", selected_sig->reference.c_str());
+                // wrefresh(win_monitor.win);
+
+                win_signals.add_signal(selected_sig);
+                win_signals.refresh();
+            }
         }
     }
 
