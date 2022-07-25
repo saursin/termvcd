@@ -138,7 +138,7 @@ public:
     virtual void print() 
     {
         unsigned line = 0;
-        unsigned voffset = 1;
+        unsigned voffset = 2;
         for(unsigned sig_indx=0; sig_indx<signals_.size(); sig_indx++)
         {
             move(line+voffset, 1);
@@ -187,10 +187,57 @@ public:
 class MonitorWin: public Window
 {
 public:
+    SignalsWin * signals_win = nullptr;
+    std::vector<std::string> values_;
+
+    unsigned zoom = 1;
+    unsigned x_offset = 0;
+
     MonitorWin(int height, int width, int y, int x): Window(height, width, y, x, "Monitor")
     {}
 
-    virtual void print() {}
+    virtual void print()
+    {
+        // draw scale
+        move(1, 1);
+        for(unsigned x=0; x<124; x++)
+        {           
+            unsigned t = zoom * (x + x_offset);
+
+            if(t%10==0)
+                wprintw(win, "|");
+            else
+                wprintw(win, ".");
+        }
+
+        unsigned voffset = 2;
+        for(unsigned sig_indx=0; sig_indx<signals_win->signals_.size(); sig_indx++)
+        {
+            move(sig_indx+voffset, 1);
+
+            // plot
+            for(unsigned x=0; x<124; x++)
+            {
+                unsigned t = zoom * (x+x_offset);
+
+                std::string pr;
+                auto val = global_trace->get_signal_value_at(signals_win->signals_[sig_indx]->hash, t);
+                switch(val->get_value_bit())
+                {
+                    case VCD_0: pr = "_"; break;
+                    case VCD_1: pr = "-"; break;
+                    case VCD_Z: pr = "z"; break;
+                    case VCD_X: pr = "x"; break;
+                    default: pr = "#"; break;
+                }
+
+                wprintw(win, "%s", pr.c_str());
+            }
+            
+            
+            
+        }
+    }
 
     virtual void keypress(char key)
     {}
@@ -252,7 +299,7 @@ int main(int argc, char** argv)
 
     // print footer
     wmove(stdscr, stdscr_height-1, 1);    // center align
-    wprintw(stdscr, "q: quit\tw/a/s/d: move selection\te:expand/collapse\tenter:add signal\tbkspc:remove signal");
+    wprintw(stdscr, "q: quit\tw/a/s/d: move selection\te:expand/collapse\tenter:add signal\tbkspc:remove signal\ti/k: zoom\tj/l:pan");
     
     // Print filename
     wmove(stdscr, 1, 1);
@@ -262,6 +309,8 @@ int main(int argc, char** argv)
     ExplorerWin win_explorer(stdscr_height-4, stdscr_width / 8, 3, 1);
     SignalsWin win_signals(stdscr_height-4, stdscr_width / 8, 3, win_explorer.width+1);
     MonitorWin win_monitor(stdscr_height-4, stdscr_width *(6 / 8), 3, win_explorer.width + win_signals.width+1);
+
+    win_monitor.signals_win = &win_signals;
     
     // win list
     std::vector<Window *> avail_windows = {&win_explorer, &win_signals, &win_monitor};
@@ -307,19 +356,41 @@ int main(int argc, char** argv)
         {
             (*selected_win)->keypress(inchar);
             (*selected_win)->refresh();
+
+            // also refresh monitor if refreshing signals view
+            if(*selected_win == &win_signals)
+                win_monitor.refresh();
+        }
+        else if(inchar == 'i' || inchar == 'j' || inchar == 'k' || inchar == 'l')
+        {
+            if(*selected_win == &win_monitor)
+            {
+                if (inchar == 'i')
+                    win_monitor.zoom>0 ? win_monitor.zoom--:0;
+                    
+                else if (inchar == 'k')
+                {
+                    win_monitor.zoom++;
+                }
+                else if (inchar == 'j')
+                {
+                    win_monitor.x_offset>0 ? win_monitor.x_offset-- : 0;
+                }
+                else if (inchar == 'l')
+                {
+                    win_monitor.x_offset++;
+                }
+                win_monitor.refresh();
+            }
         }
         else if(inchar == '\n')
         {
             if( (*selected_win) == &win_explorer)
             {
                 auto selected_sig = win_explorer.get_selected_signal();
-                
-                // wmove(win_monitor.win, 20, 2);
-                // wprintw(win_monitor.win, "%s", selected_sig->reference.c_str());
-                // wrefresh(win_monitor.win);
-
                 win_signals.add_signal(selected_sig);
                 win_signals.refresh();
+                win_monitor.refresh();
             }
         }
     }
