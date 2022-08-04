@@ -1,6 +1,9 @@
-default: termvcd
+CFLAGS:= -std=c++14 -Wall $(shell ncursesw5-config --cflags)
+LFLAGS:= $(shell ncursesw5-config --libs) -L lib/vcd_parser -lverilog-vcd-parser
 
-build_lib: lib/libverilog-vcd-parser.a
+default: build_lib termvcd
+
+build_lib: lib/vcd_parser/libverilog-vcd-parser.a
 
 lib/vcd_parser/libverilog-vcd-parser.a:
 	-git clone https://github.com/ben-marshall/verilog-vcd-parser.git
@@ -10,11 +13,11 @@ lib/vcd_parser/libverilog-vcd-parser.a:
 	# -rm -rf verilog-vcd-parser
 
 
-termvcd: lib/vcd_parser/libverilog-vcd-parser.a termvcd.o
-	g++ -Wall -o $@ $^ -lncurses -L lib/vcd_parser -lverilog-vcd-parser
+termvcd: termvcd.o lib/vcd_parser/libverilog-vcd-parser.a
+	g++ $(CFLAGS) -o $@ $< $(LFLAGS)
 
 termvcd.o: src/main.cpp
-	g++ -c -Wall -o $@ $^
+	g++ -c $(CFLAGS) -o $@ $^
 
 .PHONY: clean
 clean:
