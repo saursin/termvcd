@@ -3,10 +3,10 @@
 class Window
 {
 public:
-    std::string title;
     bool is_selected=false;
     WINDOW * win;
     int height; int width; int y; int x;
+    std::string title;
 
 
     Window(int height, int width, int y, int x, std::string title=""): height(height), width(width), y(y), x(x), title(title)

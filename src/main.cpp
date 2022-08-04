@@ -32,7 +32,7 @@ public:
         scopes = *global_trace->get_scopes();
         
         // all scopes are not expanded initially
-        for (auto s:scopes)
+        for (unsigned i=0; i<scopes.size(); i++)
             scope_is_expanded.push_back(false);
     }
 
@@ -65,7 +65,7 @@ public:
 
             if(scope_is_expanded[scope_indx])
             {
-                for(int sig_indx=0; sig_indx < signals.size(); sig_indx++)
+                for(unsigned sig_indx=0; sig_indx < signals.size(); sig_indx++)
                 {
                     move(line+voffset, 1);
                     if (selected_line_indx == line)
@@ -245,19 +245,6 @@ public:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 int main(int argc, char** argv)
 {
     if(argc<2)
@@ -271,8 +258,6 @@ int main(int argc, char** argv)
     VCDFileParser parser;
     global_trace = parser.parse_file(filepath);
 
-    if(trace == nullptr)
-        return -1;
 
     // initialize program
     initscr();                  // initialize ncurses mode
